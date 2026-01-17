@@ -1,0 +1,79 @@
+﻿Building and Troubleshooting a Custom AWS VPC with Public EC2 Access
+Project Objective
+The objective of this project was to design a functional public subnet within a custom AWS VPC, deploy an EC2 instance using Amazon Linux 2023, and ensure reliable SSH access, package installation via user data, and public HTTP access.
+The project intentionally avoided using the default VPC to expose real-world networking considerations.
+Network Design
+VPC
+* CIDR: 10.0.0.0/16
+* DNS resolution enabled
+* DNS hostnames enabled
+
+  
+
+Public Subnet
+   * CIDR: 10.0.1.0/24
+   * Availability Zone: us-east-1a
+   * Auto-assign public IPv4 enabled
+Internet Gateway
+   * One IGW created and attached to the VPC
+Route Table
+   * Custom route table created
+   * Route: 0.0.0.0/0 → Internet Gateway
+   * Explicitly associated with the public subnet
+
+  
+
+Security Controls
+Security Group (Stateful)
+Inbound
+      * SSH (22) from anywhere
+      * HTTP (80) from anywhere
+  
+
+Outbound
+      * HTTP (80)
+      * HTTPS (443)
+
+Security groups being stateful allowed return traffic automatically once a connection was established.
+Network ACL (Stateless)
+A custom NACL was created and associated with the public subnet.
+Inbound Rules
+         * SSH (22)
+         * HTTP (80)
+         * HTTPS (443)
+         * Ephemeral ports (1024–65535)
+  
+
+Outbound Rules
+         * HTTP (80)
+         * HTTPS (443)
+         * Ephemeral ports (1024–65535)
+  
+
+This configuration ensured bidirectional traffic flow for both interactive connections and package downloads.
+EC2 Deployment
+         * Instance type: t2.micro
+         * AMI: Amazon Linux 2023
+         * Subnet: public subnet
+         * Public IPv4 assigned automatically
+         * Security Group attached
+         * User data configured to install and start NGINX
+User Data Behavior
+NGINX was installed during first boot using cloud-init. Initial failures were traced to missing outbound HTTPS and ephemeral port rules in the NACL, which prevented repository access.
+Once resolved, cloud-init executed successfully.
+  
+
+Verification
+         * SSH access via EC2 Instance Connect
+         * Successful yum update execution
+         * Browser access to public IP displaying custom welcome page
+
+  
+
+  
+
+Lessons Learned
+            * NACLs require explicit allowance for ephemeral ports
+            * Outbound HTTPS is mandatory for Amazon Linux repository access
+            * Security Groups and NACLs solve different problems
+            * Default VPC behavior should not be assumed in production designs
